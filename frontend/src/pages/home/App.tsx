@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react'
 import { Leetcode, Codeforces } from '../../interfaces/contests';
 import LeetcodeTemplate from '../../components/leetcode';
 import CodeforcesTemplate from '../../components/codeforces';
+import { GetBookmark } from '../../utils/bookmark';
+import { useDispatch, useSelector } from 'react-redux';
+import { setLeetcodeState } from '../../utils/state/leetcode/leetcode';
+import { setCodechefState } from '../../utils/state/codechef/codechef';
+import { setCodeforcesState } from '../../utils/state/codeforces/codeforces';
+import { RootState } from '../../utils/state/store';
+import { useNavigate } from 'react-router-dom';
 
 const server = "http://localhost:3000"
 
@@ -17,17 +24,33 @@ export default function App() {
     codechef: true,
     leetcode: true,
   });
+
+  const navigate = useNavigate()
   
-  const [leetContests, setLeetContests] = useState<Leetcode[]>([])
-  const [pastLeetContests, setPastLeetContests] = useState<Leetcode[]>([])
+  const leetcodeDispatch = useDispatch()
+  const codeforcesDispatch = useDispatch()
+  const codechefDispatch = useDispatch()
 
-  const [codeforcesContests, setCodeforcesContests] = useState<Codeforces[]>([])
-  const [pastCodeforcesContests, setPastCodeforcesContests] = useState<Codeforces[]>([])
+  const leetcodeContests = useSelector((state: RootState) => {
+      return state.leetcode.value
+  })
+  const codeforcesContests = useSelector((state: RootState) => {
+      return state.codeforces.value
+  })
+  const codechefContests = useSelector((state: RootState) => {
+    return state.codechef.value
+  })
 
-  const [codechefContests, setCodeChefContests] = useState<[]>([])
-  const [pastCodechefContests, setPastCodechefContests] = useState<[]>([])
+  const [bookmarkedContests, setBookmarkedContests] = useState([]);
   
   useEffect(() => {
+
+    const data = GetBookmark()
+    if(data) {
+      const bookmarkList = GetBookmark();
+      setBookmarkedContests(bookmarkList);
+    }
+
     const leetcode = async () => {
       try {
         await fetch(`${server}/api/v1/leetcode`, 
@@ -41,15 +64,7 @@ export default function App() {
           return response.json()
         }).then((data) => {
           data.contests.map((contest: Leetcode) => {
-            if(contest.startTime >= Math.floor(Date.now() / 1000)) {
-              setLeetContests((prev) => [
-                ...prev, contest
-              ])
-            } else {
-              setPastLeetContests((prev) => [
-                ...prev, contest
-              ])
-            }
+            leetcodeDispatch(setLeetcodeState(contest))
           })
         })
       } catch(err) {
@@ -70,21 +85,15 @@ export default function App() {
           return response.json()
         }).then((data) => {
           data.contests.map((contest: Codeforces) => {
-            if(contest.startTimeSeconds && contest.startTimeSeconds >= Math.floor(Date.now() / 1000)) {
-              setCodeforcesContests((prev) => [
-                ...prev, contest
-              ])
-            } else {
-              setPastCodeforcesContests((prev) => [
-                ...prev, contest
-              ])
-            }
+            codeforcesDispatch(setCodeforcesState(contest))
           })
         })
       } catch(err) {
         console.log(err)
       }
     }
+
+
 
     leetcode()
     codeforces()
@@ -123,11 +132,13 @@ return (
             CodeChef
           </button>
         </div>
-        <button className="p-4 rounded-xl bg-blue-100 mt-4 text-sm text-blue-600 hover:text-blue-800 flex items-end">
+        <button onClick={() => {
+          navigate('/bookmark')
+        }} className="p-4 rounded-xl bg-blue-100 mt-4 text-sm text-blue-600 hover:text-blue-800 flex items-end">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
             <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
           </svg>
-          {1} Bookmarked Contests
+          {bookmarkedContests.length} Bookmarked Contests
         </button>
       </div>
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -136,20 +147,23 @@ return (
           {/* Leetcode Section */}
           <div className="flex flex-col h-96">
             <div className="overflow-y-auto flex-grow">
-              {leetContests.length === 0 ? (
+              {leetcodeContests.length === 0 ? (
                 <p className="text-gray-500">No upcoming Leetcode contests.</p>
-              ) : (
-                leetContests.map((contest: Leetcode) => {
-                  return (
-                    <LeetcodeTemplate
-                      platform={"leetcode"}
-                      key={contest.title} 
-                      title={contest.title} 
-                      startTime={getFormatTime(contest.startTime)} 
-                      timeRemain={getFormatTime(contest.startTime)} 
-                      duration={contest.duration.toString()}
-                    />
-                  )
+              ) : filters.leetcode && (
+                leetcodeContests.map((contest: Leetcode) => {
+                  if(contest.startTime >= Date.now()/1000) {
+                    return (
+                      <LeetcodeTemplate
+                        upcoming={true}
+                        platform={"leetcode"}
+                        key={contest.title} 
+                        title={contest.title} 
+                        startTime={getFormatTime(contest.startTime)} 
+                        timeRemain={getFormatTime(contest.startTime)} 
+                        duration={getFormatTime(contest.duration)}
+                      />
+                    )
+                  }
                 })
               )}
             </div>
@@ -160,18 +174,21 @@ return (
             <div className="overflow-y-auto flex-grow">
               {codeforcesContests.length === 0 ? (
                 <p className="text-gray-500">No upcoming Codeforces contests.</p>
-              ) : (
+              ) : filters.codeforces && (
                 codeforcesContests.map((contest: Codeforces) => {
-                  return (
-                    <CodeforcesTemplate
-                      platform={"codeforces"} 
-                      key={contest.id} 
-                      title={contest.name} 
-                      startTime={getFormatTime(contest.durationSeconds)} 
-                      timeRemain={getFormatTime(contest.durationSeconds)} 
-                      duration={contest.durationSeconds.toString()}
-                    />
-                  )
+                  if(contest.phase !== "FINISHED") {
+                    return (
+                      <CodeforcesTemplate
+                        upcoming={true}
+                        platform={"codeforces"} 
+                        key={contest.id} 
+                        title={contest.name} 
+                        startTime={getFormatTime(contest.durationSeconds)} 
+                        timeRemain={getFormatTime(contest.durationSeconds)} 
+                        duration={contest.durationSeconds.toString()}
+                      />
+                    )
+                  }
                 })
               )}
             </div>
@@ -230,20 +247,23 @@ return (
           {/* Leetcode Section */}
           <div className="flex flex-col h-lvh">
             <div className="overflow-y-auto flex-grow">
-              {leetContests.length === 0 ? (
-                <p className="text-gray-500">No upcoming Leetcode contests.</p>
-              ) : (
-                pastLeetContests.map((contest: Leetcode) => {
-                  return (
-                    <LeetcodeTemplate
-                      platform={'leetcode'}
-                      key={contest.title} 
-                      title={contest.title} 
-                      startTime={getFormatTime(contest.startTime)} 
-                      timeRemain={getFormatTime(contest.startTime)} 
-                      duration={contest.duration.toString()}
-                    />
-                  )
+              {leetcodeContests.length === 0 ? (
+                <p className="text-gray-500">Can't fetch leetcode past contests</p>
+              ) : filters.leetcode && (
+                leetcodeContests.map((contest: Leetcode) => {
+                  if(contest.startTime < (Date.now()/1000)) {
+                    return (
+                      <LeetcodeTemplate
+                        upcoming={false}
+                        platform={'leetcode'}
+                        key={contest.title} 
+                        title={contest.title} 
+                        startTime={getFormatTime(contest.startTime)} 
+                        timeRemain={getFormatTime(contest.startTime)} 
+                        duration={contest.duration.toString()}
+                      />
+                    )
+                  }
                 })
               )}
             </div>
@@ -253,19 +273,22 @@ return (
           <div className="flex flex-col h-lvh">
             <div className="overflow-y-auto flex-grow">
               {codeforcesContests.length === 0 ? (
-                <p className="text-gray-500">No upcoming Codeforces contests.</p>
-              ) : (
-                pastCodeforcesContests.map((contest: Codeforces) => {
-                  return (
-                    <CodeforcesTemplate 
-                      platform={'codeforces'}
-                      key={contest.id} 
-                      title={contest.name} 
-                      startTime={getFormatTime(contest.durationSeconds)} 
-                      timeRemain={getFormatTime(contest.durationSeconds)} 
-                      duration={contest.durationSeconds.toString()}
-                    />
-                  )
+                <p className="text-gray-500">Can't fetch codeforces past contests</p>
+              ) : filters.codeforces && (
+                codeforcesContests.map((contest: Codeforces) => {
+                  if(contest.phase === "FINISHED") {
+                    return (
+                      <CodeforcesTemplate
+                        upcoming={false}
+                        platform={'codeforces'}
+                        key={contest.id} 
+                        title={contest.name} 
+                        startTime={getFormatTime(contest.durationSeconds)} 
+                        timeRemain={getFormatTime(contest.durationSeconds)} 
+                        duration={contest.durationSeconds.toString()}
+                      />
+                    )
+                  }
                 })
               )}
             </div>

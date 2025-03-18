@@ -18,7 +18,7 @@ function getSolution(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var { contestName, platform } = req.body;
         contestName = contestName.split(' ').slice(0, 3).join(" ");
-        console.log(contestName);
+        // console.log(contestName)
         try {
             const scrapeYouTubePlaylist = () => __awaiter(this, void 0, void 0, function* () {
                 const browser = yield puppeteer.launch({ headless: true });
@@ -33,19 +33,26 @@ function getSolution(req, res) {
                         link: "https://www.youtube.com" + el.getAttribute("href")
                     }));
                 });
+                const videoDetail = {
+                    Title: "",
+                    Link: ""
+                };
                 videos.map((video) => {
                     if (video.title.includes(contestName)) {
-                        console.log("Found");
-                        return res.json({
-                            Title: video.title,
-                            Link: video.link
-                        });
+                        // console.log("Found")
+                        videoDetail.Title = video.Title,
+                            videoDetail.Link = video.link;
                     }
                 });
                 yield browser.close();
-                return res.status(404).json({
-                    message: "No solution found"
-                });
+                if (videoDetail.Title) {
+                    return res.json(videoDetail);
+                }
+                else {
+                    return res.status(404).json({
+                        message: "No solution found"
+                    });
+                }
             });
             scrapeYouTubePlaylist();
         }

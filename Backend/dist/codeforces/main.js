@@ -21,6 +21,7 @@ function fetchCodeforces(req, res) {
             }).then((response) => {
                 return response.json();
             }).then((data) => {
+                // console.log(data.result)
                 res.send({
                     contests: data.result
                 });

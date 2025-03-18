@@ -10,6 +10,7 @@ async function fetchCodeforces(req: Request, res: Response): Promise<any> {
         }).then((response) => {
             return response.json()
         }).then((data) => {
+            // console.log(data.result)
             res.send({
                 contests: data.result
             })

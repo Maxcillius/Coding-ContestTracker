@@ -31,7 +31,7 @@ async function fetchLeetcode(req: Request, res: Response): Promise<any> {
             res.send({
                 contests
             })
-            return
+        return
     }
     
     } catch (error) {

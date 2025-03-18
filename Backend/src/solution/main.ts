@@ -10,7 +10,7 @@ export  default async function getSolution(req: Request, res: Response) {
     var { contestName, platform } = req.body
 
     contestName = contestName.split(' ').slice(0, 3).join(" ")
-    console.log(contestName)
+    // console.log(contestName)
 
     try {
         const scrapeYouTubePlaylist = async () => {
@@ -30,21 +30,28 @@ export  default async function getSolution(req: Request, res: Response) {
                 }));
             })
 
+            const videoDetail = {
+                Title: "",
+                Link: ""
+            }
+
             videos.map((video: any) => {
                 if(video.title.includes(contestName)) {
-                    console.log("Found")
-                    return res.json({
-                        Title: video.title,
-                        Link: video.link
-                    })
+                    // console.log("Found")
+                    videoDetail.Title = video.Title,
+                    videoDetail.Link = video.link
                 }
             })
 
             await browser.close()
 
-            return res.status(404).json({
-                message: "No solution found"
-            })
+            if(videoDetail.Title) {
+                return res.json(videoDetail)
+            } else {
+                return res.status(404).json({
+                    message: "No solution found"
+                })
+            }
         }
         
         scrapeYouTubePlaylist();
